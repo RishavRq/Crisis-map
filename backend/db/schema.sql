@@ -7,6 +7,18 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- ============================================================
+-- ROW LEVEL SECURITY
+-- Disable RLS so the anon key can read/write.
+-- For production, create proper policies instead.
+-- ============================================================
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE live_events ENABLE ROW LEVEL SECURITY;
+
+-- Allow anon full access (public app, no auth)
+CREATE POLICY "anon_all_reports" ON reports FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all_events" ON live_events FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================================
 -- REPORTS TABLE
 -- ============================================================
 -- id is TEXT because the app generates IDs like
