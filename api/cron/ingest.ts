@@ -6,17 +6,22 @@ import { generateReport, generateLiveEvent } from '../../backend/src/services/mo
 import type { Report } from '../../backend/src/types.js';
 
 // ============================================================
-// CRISIS MAP — VERCEL CRON INGESTION WORKER
-// Runs every minute via Vercel Cron Jobs (vercel.json → crons).
+// CRISIS MAP — INGESTION ENDPOINT
+// Called by external scheduler (cron-job.org, cronitor, etc.)
+// or manually: curl https://your-app.vercel.app/api/cron/ingest?key=YOUR_SECRET
 // Fetches from USGS + GDACS, writes to Supabase.
 // Also seeds 50 mock reports on first run if DB is empty.
 // ============================================================
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Verify this is a genuine Vercel cron request
-  const authHeader = req.headers.authorization;
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // Auth: accept ?key= query param OR Authorization header
+  const secret = process.env.CRON_SECRET;
+  if (secret) {
+    const queryKey = req.query.key as string | undefined;
+    const headerKey = req.headers.authorization?.replace('Bearer ', '');
+    if (queryKey !== secret && headerKey !== secret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
   }
 
   const results: string[] = [];
