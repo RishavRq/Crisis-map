@@ -5,7 +5,6 @@ import { WebSocketServer, WebSocket } from 'ws';
 import 'dotenv/config';
 
 import { Report, LiveEvent } from './types';
-import { generateReport, generateLiveEvent } from './services/mockGenerator';
 import { fetchUSGSEarthquakes } from './services/usgsService';
 import { fetchGDACSEvents } from './services/gdacsService';
 import {
@@ -75,22 +74,6 @@ async function main() {
   const dbOk = await checkDbConnection();
   console.log(`[startup] Database: ${dbOk ? '✓ Connected' : '✗ Not reachable (using fallback)'}`);
 
-  // Seed initial mock data if the reports table is empty
-  const existing = await listReports(1);
-  if (existing.length === 0) {
-    console.log('[startup] Seeding 50 mock reports...');
-    const mockReports: Report[] = [];
-    const mockEvents: LiveEvent[] = [];
-    for (let i = 0; i < 50; i++) {
-      const r = generateReport();
-      mockReports.push(r);
-      mockEvents.push(generateLiveEvent(r));
-    }
-    await insertReports(mockReports);
-    await insertEvents(mockEvents);
-    console.log('[startup] Mock data seeded.');
-  }
-
   // ---------- API ROUTES ----------
 
   app.get('/health', (_req, res) => res.send('OK'));
@@ -111,17 +94,6 @@ async function main() {
   });
 
   // ---------- INGESTION POLLERS ----------
-
-  // Mock generator — 1 new report every 15 seconds
-  setInterval(async () => {
-    try {
-      const newReport = generateReport();
-      const event = generateLiveEvent(newReport);
-      await ingestBatch([newReport], [event]);
-    } catch (err) {
-      console.error('[mock] Ingestion error:', err);
-    }
-  }, 15_000);
 
   // USGS earthquake feed — every 30 seconds
   setInterval(async () => {
